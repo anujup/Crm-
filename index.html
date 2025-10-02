@@ -1,0 +1,665 @@
+<!-- PROFESSIONAL CRM UI (single HTML block) -->
+<div id="crm-app">
+  <style>
+    :root{
+      --bg:#f5f7fb; --card:#ffffff; --accent:#6b5ce6; --muted:#6b7280; --danger:#ef4444;
+      --success:#10b981; --orange:#f59e0b; --glass:rgba(255,255,255,0.6);
+    }
+    *{box-sizing:border-box}
+    body,html,#crm-app{font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial; margin:0; padding:0; background:var(--bg); color:#111;}
+    /* Container */
+    #crmContainer{max-width:1100px;margin:18px auto;padding:16px;}
+    /* Header */
+    .topbar{display:flex;align-items:center;justify-content:space-between;background:linear-gradient(90deg,#fff,#fbfbff);padding:12px 16px;border-radius:12px;box-shadow:0 6px 18px rgba(20,20,50,0.06);position:sticky;top:12px;z-index:40}
+    .brand{display:flex;align-items:center;gap:12px}
+    .brand-logo{width:42px;height:42px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#8a7bff);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;box-shadow:0 6px 14px rgba(107,92,230,0.18)}
+    .brand h1{font-size:18px;margin:0}
+    .top-actions{display:flex;gap:8px;align-items:center}
+    .btn{background:var(--accent);color:#fff;border:none;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:600;box-shadow:0 6px 16px rgba(107,92,230,0.12)}
+    .btn.alt{background:#fff;color:var(--accent);border:1px solid rgba(107,92,230,0.12)}
+    .icon-btn{background:#fff;padding:8px;border-radius:8px;border:1px solid #eee;cursor:pointer}
+    /* Layout */
+    .main{display:grid;grid-template-columns:260px 1fr;gap:16px;margin-top:16px}
+    .sidebar{background:var(--card);padding:12px;border-radius:12px;box-shadow:0 6px 18px rgba(20,20,50,0.04)}
+    .content{min-height:60vh}
+    /* Dashboard cards */
+    .dash-grid{display:flex;flex-direction:column;gap:12px}
+    .dash-cards{display:flex;gap:10px;flex-wrap:wrap}
+    .dash-card{flex:1;min-width:120px;background:linear-gradient(180deg,#fff,#fbfbff);padding:12px;border-radius:10px;border:1px solid rgba(99,102,241,0.06);cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+    .dash-card.active{box-shadow:0 8px 24px rgba(107,92,230,0.08);transform:translateY(-3px);border-color:var(--accent)}
+    .dash-card strong{display:block;font-size:14px}
+    .dash-card .num{font-size:18px;font-weight:700}
+    /* Card view */
+    .card-view{background:var(--card);padding:16px;border-radius:12px;box-shadow:0 8px 30px rgba(20,20,50,0.06)}
+    .cust-grid{display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap}
+    .cust-details{flex:1;min-width:260px}
+    .cust-actions{width:260px;display:flex;flex-direction:column;gap:10px}
+    .field{margin-bottom:8px}
+    .field strong{display:block;color:var(--muted);font-size:12px;margin-bottom:6px}
+    input[type=text],select{padding:10px;border-radius:8px;border:1px solid #e6e6ef;width:100%;font-size:14px}
+    .call-big{background:linear-gradient(90deg,var(--accent),#8a7bff);color:#fff;padding:12px;border-radius:10px;border:none;font-weight:700;cursor:pointer}
+    .small{font-size:13px;color:var(--muted)}
+    /* Table */
+    .table-wrap{background:var(--card);padding:12px;border-radius:12px;box-shadow:0 8px 30px rgba(20,20,50,0.04)}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:10px 8px;text-align:left;border-bottom:1px solid #f0f0f5;font-size:14px}
+    th{background:#fafaff;color:#333;font-weight:700}
+    tr:hover td{background:#fcfcff}
+    select[disabled],input[disabled]{background:#f8f8fb;color:#9aa0b0}
+    /* Admin */
+    .admin-panel{background:var(--card);padding:14px;border-radius:12px;box-shadow:0 8px 20px rgba(20,20,50,0.04)}
+    .flex-between{display:flex;justify-content:space-between;align-items:center}
+    /* Responsive */
+    @media(max-width:900px){
+      .main{grid-template-columns:1fr; padding-bottom:40px}
+      .cust-actions{width:100%}
+      .sidebar{order:2}
+    }
+  </style>
+
+  <div id="crmContainer">
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="brand"><div class="brand-logo">CRM</div><h1>Sales CRM</h1></div>
+      <div class="top-actions">
+        <div id="userLabel" class="small" style="margin-right:12px"></div>
+        <button id="gotoAdminBtn" class="icon-btn alt" title="Admin" style="display:none">Admin</button>
+        <button id="logoutTop" class="icon-btn" style="display:none">Logout</button>
+      </div>
+    </div>
+
+    <!-- Login -->
+    <div id="loginBox" class="card-view" style="margin-top:18px;max-width:420px">
+      <h2 style="margin:0 0 12px 0;color:var(--accent)">Login</h2>
+      <div class="field"><input id="username" placeholder="Username"></div>
+      <div class="field"><input id="password" type="password" placeholder="Password"></div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button id="loginBtn" class="btn">Login</button>
+        <div id="loginError" style="color:var(--danger);font-weight:600"></div>
+      </div>
+    </div>
+
+    <!-- App layout -->
+    <div class="main" id="appLayout" style="display:none">
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <div class="dash-grid">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div><strong class="small">Dashboard</strong></div>
+            <div class="small" id="agentTimeDisplay">--:--:--</div>
+          </div>
+          <div class="dash-cards" id="dashCards">
+            <div class="dash-card" data-filter="Total"><div><strong>Total</strong><div class="num" id="totalCount">0</div></div></div>
+            <div class="dash-card" data-filter="Interested"><div><strong>Interested</strong><div class="num" id="interestedCount">0</div></div></div>
+            <div class="dash-card" data-filter="Not Interested"><div><strong>Not Interested</strong><div class="num" id="notInterestedCount">0</div></div></div>
+            <div class="dash-card active" data-filter="Pending"><div><strong>Pending</strong><div class="num" id="pendingCount">0</div></div></div>
+            <div class="dash-card" data-filter="Follow-up"><div><strong>Follow-up</strong><div class="num" id="followupCount">0</div></div></div>
+          </div>
+
+          <div style="margin-top:10px">
+            <small class="small">Quick actions</small>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <button id="refreshBtn" class="btn alt">Refresh</button>
+              <button id="adminOpenBtn" class="btn alt" style="display:none">Admin</button>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Content -->
+      <section class="content">
+        <!-- Card / Table container -->
+        <div id="contentArea"></div>
+
+        <!-- Admin container -->
+        <div id="adminPanel" style="display:none;margin-top:16px">
+          <div class="admin-panel">
+            <div class="flex-between">
+              <h3 style="margin:0;color:var(--accent)">Admin Panel</h3>
+              <div>
+                <input id="newUsername" placeholder="username" style="padding:8px;border-radius:8px;border:1px solid #eee">
+                <input id="newPassword" placeholder="password" style="padding:8px;border-radius:8px;border:1px solid #eee">
+                <button id="addUserBtn" class="btn alt">Add</button>
+              </div>
+            </div>
+
+            <div style="margin-top:12px;display:flex;gap:12px;align-items:center">
+              <label>Lunch Time:</label>
+              <input type="time" id="adminLunchTime" />
+              <button id="setLunchTimeBtn" class="btn alt">Set</button>
+
+              <label style="margin-left:20px">Filter date:</label>
+              <input type="date" id="filterDate">
+              <input type="time" id="filterTime">
+              <button id="applyFilterBtn" class="btn alt">Apply</button>
+            </div>
+
+            <div style="margin-top:14px;overflow:auto">
+              <table id="employeeTable">
+                <thead><tr><th>Username</th><th>Total Login Time</th><th>Total Cust</th><th>Interested</th><th>Not Int</th><th>Pending</th><th>Follow-up</th><th>Actions</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+
+            <div id="empCustomerDetails" style="margin-top:14px;display:none">
+              <h4>Employee Customers</h4>
+              <div id="empCustomerContainer"></div>
+            </div>
+          </div>
+        </div>
+
+      </section>
+    </div>
+  </div>
+
+  <!-- Lunch popup -->
+  <div id="lunchPopupModal" style="display:none;position:fixed;inset:0;align-items:center;justify-content:center;z-index:9999;">
+    <div style="background:linear-gradient(90deg,var(--accent),#8a7bff);color:#fff;padding:20px;border-radius:12px;box-shadow:0 20px 60px rgba(107,92,230,0.2);min-width:280px;text-align:center">
+      <h3 style="margin:0 0 8px 0">Lunch Time</h3>
+      <div style="font-size:22px;font-weight:700"><span id="lunchCountdown">30:00</span></div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script>
+  /* ---------------------------
+      CONFIG / STORAGE / HELPERS
+     --------------------------- */
+  const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTOtS2GnTFyub_OiySTKw_6Uu6d-GfRpUZ7VHePUamzXS3LxTVgWzZRoAO1xA9O7HQ9W_1IELtChcA9/pub?output=csv";
+  const DEFAULT_USERS = { agent1:"pass1", agent2:"pass2", agent3:"pass3", admin:"adminpass" };
+  if(!localStorage.getItem('users')) localStorage.setItem('users', JSON.stringify(DEFAULT_USERS));
+
+  let customers = []; // parsed CSV rows (objects)
+  let headers = [];   // CSV headers (dynamic)
+  let currentAgent = null;
+  let loginSessions = []; // [{start, end},...]
+  let loginTimer = null;
+  let currentFilter = "Pending";
+  let filteredCustomers = [];
+  let currentIndex = 0;
+
+  function maskPhone(phone){
+    if(!phone) return "";
+    const digits = phone.replace(/\D/g,'');
+    if(digits.length<6) return phone;
+    return digits.replace(/(\d{4})\d{4}(\d{2})/,'$1****$2');
+  }
+
+  // tiny CSV parse (since PapaParse may not be available in WP), simple parse for basic CSV
+  async function fetchCSV(){
+    try{
+      const res = await fetch(CSV_URL);
+      const txt = await res.text();
+      // parse CSV header
+      const lines = txt.split(/\r?\n/).filter(l=>l.trim()!=='');
+      if(lines.length===0) return;
+      headers = lines[0].split(',').map(h=>h.trim());
+      customers = lines.slice(1).map(line=>{
+        const row = {};
+        // naive split by comma - good for simple exported sheets
+        const cols = line.split(',');
+        headers.forEach((h,i)=> row[h]= (cols[i]||"").trim() );
+        return row;
+      }).filter(r=>r['Name'] && r['Phone']);
+    }catch(e){
+      console.error("CSV fetch error:",e);
+      alert("Could not load customer sheet. Check CSV URL or network.");
+    }
+  }
+
+  function formatSecs(sec){
+    sec = Math.max(0, Math.floor(sec));
+    const h = String(Math.floor(sec/3600)).padStart(2,'0');
+    sec%=3600;
+    const m = String(Math.floor(sec/60)).padStart(2,'0');
+    const s = String(sec%60).padStart(2,'0');
+    return `${h}:${m}:${s}`;
+  }
+
+  /* ---------------------------
+      AUTH & UI BOOT
+     --------------------------- */
+  document.getElementById('loginBtn').addEventListener('click', async ()=>{
+    const u = document.getElementById('username').value.trim();
+    const p = document.getElementById('password').value.trim();
+    const users = JSON.parse(localStorage.getItem('users')||'{}');
+    if(users[u] && users[u]===p){
+      currentAgent = u;
+      document.getElementById('loginBox').style.display='none';
+      document.getElementById('appLayout').style.display='grid';
+      document.getElementById('userLabel').innerText = `User: ${u}`;
+      document.getElementById('logoutTop').style.display='inline-block';
+      document.getElementById('gotoAdminBtn').style.display = (u==='admin') ? 'inline-block' : 'none';
+      document.getElementById('adminOpenBtn').style.display = (u==='admin') ? 'inline-block' : 'none';
+
+      await initAfterLogin();
+    } else {
+      document.getElementById('loginError').innerText = "Invalid credentials";
+      setTimeout(()=>document.getElementById('loginError').innerText='','2500');
+    }
+  });
+
+  document.getElementById('logoutTop').addEventListener('click', ()=>{
+    if(!currentAgent) location.reload();
+    // end last session
+    let sessions = JSON.parse(localStorage.getItem(`sessions-${currentAgent}`) || '[]');
+    if(sessions.length && sessions[sessions.length-1].end===null) sessions[sessions.length-1].end = Date.now();
+    localStorage.setItem(`sessions-${currentAgent}`, JSON.stringify(sessions));
+    localStorage.setItem(`currentIndex-${currentAgent}`, currentIndex);
+    location.reload();
+  });
+
+  document.getElementById('refreshBtn').addEventListener('click', async ()=>{
+    await initAfterLogin(true);
+  });
+
+  document.getElementById('adminOpenBtn').addEventListener('click', ()=>{ toggleAdmin(true); });
+  document.getElementById('gotoAdminBtn').addEventListener('click', ()=>{ toggleAdmin(true); });
+
+  async function initAfterLogin(skipCSV){
+    if(!skipCSV) await fetchCSV();
+    // if admin
+    if(currentAgent==='admin'){
+      document.getElementById('adminPanel').style.display='block';
+      document.getElementById('contentArea').style.display='none';
+      document.getElementById('adminPanel').scrollIntoView({behavior:'smooth'});
+      loadUsersTable();
+      document.getElementById('adminLunchTime').value = localStorage.getItem('lunchTime') || '14:30';
+      return;
+    }
+
+    // normal agent
+    document.getElementById('adminPanel').style.display='none';
+    document.getElementById('contentArea').style.display='block';
+    // create session
+    let sessions = JSON.parse(localStorage.getItem(`sessions-${currentAgent}`) || '[]');
+    sessions.push({start: Date.now(), end: null});
+    localStorage.setItem(`sessions-${currentAgent}`, JSON.stringify(sessions));
+    // load session var
+    loginSessions = JSON.parse(localStorage.getItem(`sessions-${currentAgent}`) || '[]');
+    startLoginTimer();
+    // default to Pending (single card)
+    currentFilter = 'Pending';
+    currentIndex = parseInt(localStorage.getItem(`currentIndex-${currentAgent}`) || 0);
+    applyFilter(currentFilter);
+    startLunchChecker();
+  }
+
+  /* ---------------------------
+      DASHBOARD & FILTERS
+     --------------------------- */
+  function updateDashboardCounts(){
+    if(!currentAgent) return;
+    const agentCustomers = customers.filter(c=>c.AssignedTo===currentAgent);
+    const total = agentCustomers.length;
+    const interested = agentCustomers.filter(c=> localStorage.getItem(`status-${c.Phone}-${currentAgent}`) === 'Interested').length;
+    const notInterested = agentCustomers.filter(c=> localStorage.getItem(`status-${c.Phone}-${currentAgent}`) === 'Not Interested').length;
+    const followup = agentCustomers.filter(c=> localStorage.getItem(`status-${c.Phone}-${currentAgent}`) === 'Follow-up').length;
+    const pending = agentCustomers.filter(c=> !['Interested','Not Interested','Follow-up'].includes(localStorage.getItem(`status-${c.Phone}-${currentAgent}`) || 'Pending') ).length;
+
+    document.getElementById('totalCount').innerText = total;
+    document.getElementById('interestedCount').innerText = interested;
+    document.getElementById('notInterestedCount').innerText = notInterested;
+    document.getElementById('pendingCount').innerText = pending;
+    document.getElementById('followupCount').innerText = followup;
+
+    // highlight active
+    document.querySelectorAll('.dash-card').forEach(card=> card.classList.remove('active') );
+    const sel = Array.from(document.querySelectorAll('.dash-card')).find(c=>c.getAttribute('data-filter')===currentFilter);
+    if(sel) sel.classList.add('active');
+  }
+
+  // hook dashboard clicks
+  document.querySelectorAll('.dash-card').forEach(card=>{
+    card.addEventListener('click', ()=>{
+      const f = card.getAttribute('data-filter');
+      // when user clicks Total, show Total table but disable editing
+      applyFilter(f);
+    });
+  });
+
+  function applyFilter(f){
+    currentFilter = f;
+    // derive filteredCollections for this agent
+    filteredCustomers = customers.filter(c=> c.AssignedTo===currentAgent );
+    if(f!=='All' && f!=='Total') filteredCustomers = filteredCustomers.filter(c=> (localStorage.getItem(`status-${c.Phone}-${currentAgent}`) || 'Pending') === f );
+    // For "Total": show table but editing disabled
+    if(f==='Pending'){
+      renderCardView();
+    } else {
+      renderTableView(f==='Total');
+    }
+    updateDashboardCounts();
+  }
+
+  /* ---------------------------
+      CARD VIEW (Pending) - single customer
+     --------------------------- */
+  function renderCardView(){
+    updateDashboardCounts();
+    const area = document.getElementById('contentArea');
+    area.innerHTML = '';
+    const container = document.createElement('div');
+    container.className='card-view';
+    // find pending list for agent
+    filteredCustomers = customers.filter(c=> c.AssignedTo===currentAgent && ((localStorage.getItem(`status-${c.Phone}-${currentAgent}`) || 'Pending') === 'Pending') );
+    if(filteredCustomers.length===0){
+      container.innerHTML = `<div style="padding:20px;text-align:center;color:var(--muted)">No pending customers</div>`;
+      area.appendChild(container); return;
+    }
+    // ensure currentIndex within length
+    if(currentIndex >= filteredCustomers.length) currentIndex = 0;
+    const cust = filteredCustomers[currentIndex];
+    // dynamic fields render (excluding AssignedTo)
+    let fieldsHtml = '';
+    headers.forEach(h=>{
+      if(h==='AssignedTo') return;
+      const val = (h==='Phone') ? maskPhone(cust[h]) : (cust[h] || '');
+      fieldsHtml += `<div class="field"><strong>${h}</strong><div>${val}</div></div>`;
+    });
+
+    // action column
+    const statusVal = localStorage.getItem(`status-${cust.Phone}-${currentAgent}`) || 'Pending';
+    const notesVal = localStorage.getItem(`notes-${cust.Phone}-${currentAgent}`) || '';
+
+    container.innerHTML = `
+      <div style="display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap;">
+        <div class="cust-details">${fieldsHtml}</div>
+        <div class="cust-actions">
+          <div class="field"><strong>Last status at</strong><div class="small" id="statusTimeDisplay">${localStorage.getItem(`statusTime-${cust.Phone}-${currentAgent}`) || '--'}</div></div>
+          <button id="callNow" class="call-big">Call</button>
+          <div class="field"><strong>Status</strong>
+            <select id="cardStatus" disabled>
+              <option value="Pending">Pending</option>
+              <option value="Interested">Interested</option>
+              <option value="Not Interested">Not Interested</option>
+              <option value="Follow-up">Follow-up</option>
+            </select>
+          </div>
+          <div class="field"><strong>Notes</strong><input type="text" id="cardNotes" value="${notesVal}" disabled></div>
+          <div style="display:flex;gap:8px;"><button id="skipBtn" class="btn alt">Skip</button><div class="small">Customer ${currentIndex+1} of ${filteredCustomers.length}</div></div>
+        </div>
+      </div>
+    `;
+    area.appendChild(container);
+
+    // enable call -> allow status editing
+    document.getElementById('callNow').addEventListener('click', ()=>{
+      // open dialer
+      window.location.href = `tel:${cust['Phone']}`;
+      document.getElementById('cardStatus').disabled = false;
+      document.getElementById('cardNotes').disabled = false;
+    });
+
+    // status change handler -> saves timestamp, next customer
+    document.getElementById('cardStatus').value = statusVal;
+    document.getElementById('cardStatus').addEventListener('change', (e)=>{
+      const ns = e.target.value;
+      localStorage.setItem(`status-${cust.Phone}-${currentAgent}`, ns);
+      localStorage.setItem(`statusTime-${cust.Phone}-${currentAgent}`, new Date().toLocaleString());
+      const noteVal = document.getElementById('cardNotes').value || '';
+      localStorage.setItem(`notes-${cust.Phone}-${currentAgent}`, noteVal);
+      // advance index and save
+      currentIndex++;
+      localStorage.setItem(`currentIndex-${currentAgent}`, currentIndex);
+      // show next
+      applyFilter('Pending');
+    });
+
+    // notes save on input
+    document.getElementById('cardNotes').addEventListener('input', (e)=>{
+      localStorage.setItem(`notes-${cust.Phone}-${currentAgent}`, e.target.value);
+    });
+
+    // skip button -> move next without changing status
+    document.getElementById('skipBtn').addEventListener('click', ()=>{
+      currentIndex++;
+      localStorage.setItem(`currentIndex-${currentAgent}`, currentIndex);
+      applyFilter('Pending');
+    });
+
+    // show saved status time
+    document.getElementById('statusTimeDisplay').innerText = localStorage.getItem(`statusTime-${cust.Phone}-${currentAgent}`) || '--';
+
+    updateDashboardCounts();
+  }
+
+  /* ---------------------------
+      TABLE VIEW (Total or filtered)
+     --------------------------- */
+  function renderTableView(disableEdit=false){
+    // Build table with dynamic headers
+    const area = document.getElementById('contentArea');
+    area.innerHTML = '';
+    const wrap = document.createElement('div');
+    wrap.className = 'table-wrap';
+    let html = '<table><thead><tr>';
+    headers.forEach(h=>{ if(h!=='AssignedTo') html += `<th>${h}</th>`; });
+    html += '<th>Status</th><th>Notes</th><th>Last Status Time</th><th>Call</th></tr></thead><tbody>';
+    // list rows (for current agent, filtered by currentFilter except Total)
+    let rows = customers.filter(c=> c.AssignedTo===currentAgent );
+    if(currentFilter && currentFilter!=='Total' && currentFilter!=='All'){
+      rows = rows.filter(c=> (localStorage.getItem(`status-${c.Phone}-${currentAgent}`) || 'Pending') === currentFilter );
+    }
+    rows.forEach(r=>{
+      const status = localStorage.getItem(`status-${r.Phone}-${currentAgent}`) || 'Pending';
+      const notes = (localStorage.getItem(`notes-${r.Phone}-${currentAgent}`) || '');
+      const statusTime = (localStorage.getItem(`statusTime-${r.Phone}-${currentAgent}`) || '--');
+      html += '<tr>';
+      headers.forEach(h=>{ if(h!=='AssignedTo') {
+        const val = (h==='Phone') ? maskPhone(r[h]) : (r[h]||'');
+        html += `<td>${val}</td>`;
+      }});
+      html += `<td><select data-phone="${r.Phone}" class="rowStatus" ${disableEdit?'disabled':''}>
+        <option ${status==='Pending'?'selected':''}>Pending</option>
+        <option ${status==='Interested'?'selected':''}>Interested</option>
+        <option ${status==='Not Interested'?'selected':''}>Not Interested</option>
+        <option ${status==='Follow-up'?'selected':''}>Follow-up</option>
+      </select></td>`;
+      html += `<td><input data-phone="${r.Phone}" class="rowNotes" value="${notes}" ${disableEdit?'disabled':''} /></td>`;
+      html += `<td>${statusTime}</td>`;
+      html += `<td><button class="rowCall" data-phone="${r.Phone}">Call</button></td>`;
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    wrap.innerHTML = html;
+    area.appendChild(wrap);
+
+    // attach events
+    wrap.querySelectorAll('.rowStatus').forEach(s=>{
+      s.addEventListener('change', (e)=>{
+        const phone = e.target.getAttribute('data-phone');
+        localStorage.setItem(`status-${phone}-${currentAgent}`, e.target.value);
+        localStorage.setItem(`statusTime-${phone}-${currentAgent}`, new Date().toLocaleString());
+        updateDashboardCounts();
+      });
+    });
+    wrap.querySelectorAll('.rowNotes').forEach(inp=>{
+      inp.addEventListener('input', (e)=>{
+        const phone = e.target.getAttribute('data-phone');
+        localStorage.setItem(`notes-${phone}-${currentAgent}`, e.target.value);
+      });
+    });
+    wrap.querySelectorAll('.rowCall').forEach(btn=>{
+      btn.addEventListener('click', (e)=>{
+        const phone = e.target.getAttribute('data-phone');
+        window.location.href = `tel:${phone}`;
+      });
+    });
+    updateDashboardCounts();
+  }
+
+  /* ---------------------------
+      LOGIN TIMER (sum of sessions)
+     --------------------------- */
+  function startLoginTimer(){
+    clearInterval(loginTimer);
+    loginTimer = setInterval(()=>{
+      const sessions = JSON.parse(localStorage.getItem(`sessions-${currentAgent}`) || '[]');
+      let total = 0;
+      sessions.forEach(s=>{
+        const start = s.start || 0;
+        const end = s.end || Date.now();
+        total += Math.max(0, (end - start) / 1000);
+      });
+      document.getElementById('agentTimeDisplay').innerText = formatSecs(total);
+    },1000);
+  }
+
+  /* ---------------------------
+      ADMIN: users table & employee details
+     --------------------------- */
+  function toggleAdmin(show){
+    document.getElementById('adminPanel').style.display = show ? 'block' : 'none';
+    document.getElementById('contentArea').style.display = show ? 'none' : 'block';
+  }
+
+  function loadUsersTable(){
+    const tbody = document.querySelector('#employeeTable tbody');
+    tbody.innerHTML = '';
+    const users = JSON.parse(localStorage.getItem('users')||'{}');
+    Object.keys(users).forEach(u=>{
+      if(u==='admin') return;
+      const sessions = JSON.parse(localStorage.getItem(`sessions-${u}`) || '[]');
+      let total = 0;
+      sessions.forEach(s=>{ total += ((s.end || Date.now()) - s.start) / 1000; });
+      const rows = customers.filter(c=> c.AssignedTo === u);
+      const interested = rows.filter(r=> localStorage.getItem(`status-${r.Phone}-${u}`) === 'Interested').length;
+      const notInterested = rows.filter(r=> localStorage.getItem(`status-${r.Phone}-${u}`) === 'Not Interested').length;
+      const followup = rows.filter(r=> localStorage.getItem(`status-${r.Phone}-${u}`) === 'Follow-up').length;
+      const pending = rows.length - interested - notInterested - followup;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td style="cursor:pointer;color:${'#1950d1'}">${u}</td>
+        <td>${formatSecs(total)}</td>
+        <td>${rows.length}</td>
+        <td>${interested}</td><td>${notInterested}</td><td>${pending}</td><td>${followup}</td>
+        <td><button class="btn alt admin-delete" data-user="${u}">Delete</button></td>`;
+      tbody.appendChild(tr);
+    });
+    // name click -> show employee customers
+    document.querySelectorAll('#employeeTable tbody tr').forEach(tr=>{
+      const name = tr.children[0].innerText;
+      tr.children[0].addEventListener('click', ()=> showEmployeeCustomers(name));
+    });
+    document.querySelectorAll('.admin-delete').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const u = btn.getAttribute('data-user');
+        if(confirm(`Delete user ${u}?`)){
+          const users = JSON.parse(localStorage.getItem('users')||'{}');
+          delete users[u];
+          localStorage.setItem('users', JSON.stringify(users));
+          loadUsersTable();
+        }
+      });
+    });
+  }
+
+  function showEmployeeCustomers(username){
+    const container = document.getElementById('empCustomerContainer');
+    const rows = customers.filter(c=> c.AssignedTo === username);
+    if(rows.length===0){ container.innerHTML = '<div>No customers assigned.</div>'; document.getElementById('empCustomerDetails').style.display='block'; return; }
+    let html = '<table><thead><tr>';
+    headers.forEach(h=>{ if(h!=='AssignedTo') html += `<th>${h}</th>`;});
+    html += '<th>Status</th><th>Notes</th><th>Last Time</th><th>Call</th></tr></thead><tbody>';
+    rows.forEach(r=>{
+      const status = localStorage.getItem(`status-${r.Phone}-${username}`) || 'Pending';
+      const notes = localStorage.getItem(`notes-${r.Phone}-${username}`) || '';
+      const stime = localStorage.getItem(`statusTime-${r.Phone}-${username}`) || '--';
+      html += '<tr>';
+      headers.forEach(h=>{ if(h!=='AssignedTo'){ html += `<td>${h==='Phone'?maskPhone(r[h]):(r[h]||'')}</td>` }});
+      html += `<td><select data-phone="${r.Phone}" data-user="${username}" class="adminStatus">${status}</select></td>`;
+      html += `<td><input data-phone="${r.Phone}" data-user="${username}" class="adminNotes" value="${notes}" /></td>`;
+      html += `<td>${stime}</td>`;
+      html += `<td><button class="adminCall" data-phone="${r.Phone}">Call</button></td>`;
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    container.innerHTML = html;
+    document.getElementById('empCustomerDetails').style.display = 'block';
+    // events
+    document.querySelectorAll('.adminStatus').forEach(sel=>{
+      sel.addEventListener('change', e=>{
+        const phone = e.target.getAttribute('data-phone');
+        const user = e.target.getAttribute('data-user');
+        localStorage.setItem(`status-${phone}-${user}`, e.target.value);
+        localStorage.setItem(`statusTime-${phone}-${user}`, new Date().toLocaleString());
+        loadUsersTable();
+      });
+    });
+    document.querySelectorAll('.adminNotes').forEach(inp=>{
+      inp.addEventListener('input', e=>{
+        const phone = e.target.getAttribute('data-phone');
+        const user = e.target.getAttribute('data-user');
+        localStorage.setItem(`notes-${phone}-${user}`, e.target.value);
+      });
+    });
+    document.querySelectorAll('.adminCall').forEach(b=>{
+      b.addEventListener('click', e=> window.location.href = 'tel:'+e.target.getAttribute('data-phone'));
+    });
+  }
+
+  document.getElementById('addUserBtn').addEventListener('click', ()=>{
+    const u = document.getElementById('newUsername').value.trim();
+    const p = document.getElementById('newPassword').value.trim();
+    if(!u || !p) return alert('enter username & password');
+    const users = JSON.parse(localStorage.getItem('users')||'{}');
+    if(users[u]) return alert('user exists');
+    users[u]=p;
+    localStorage.setItem('users', JSON.stringify(users));
+    document.getElementById('newUsername').value=''; document.getElementById('newPassword').value='';
+    loadUsersTable();
+  });
+
+  /* ---------------------------
+      Lunch popup logic (admin controllable)
+     --------------------------- */
+  document.getElementById('setLunchTimeBtn').addEventListener('click', ()=>{
+    const t = document.getElementById('adminLunchTime').value;
+    if(!t) return alert('select time');
+    localStorage.setItem('lunchTime', t);
+    alert('Lunch time updated to '+t);
+  });
+
+  let lunchInterval = null;
+  function startLunchChecker(){
+    clearInterval(lunchInterval);
+    lunchInterval = setInterval(()=>{
+      const lunch = localStorage.getItem('lunchTime') || '14:30';
+      const [lh, lm] = lunch.split(':').map(Number);
+      const now = new Date();
+      if(now.getHours() === lh && now.getMinutes() === lm){
+        showLunchModal();
+      }
+    }, 10000); // check every 10s for responsiveness
+  }
+
+  function showLunchModal(){
+    const modal = document.getElementById('lunchPopupModal');
+    modal.style.display='flex';
+    let timer = 30*60;
+    document.getElementById('lunchCountdown').innerText = formatSecs(timer);
+    const intv = setInterval(()=>{
+      timer--;
+      document.getElementById('lunchCountdown').innerText = formatSecs(timer);
+      if(timer<=0){ clearInterval(intv); modal.style.display='none'; }
+    },1000);
+  }
+
+  /* ---------------------------
+      INITIAL LOAD
+     --------------------------- */
+  (async function init(){
+    await fetchCSV();
+    // wire dashboard clicks after CSV loaded
+    document.querySelectorAll('.dash-card').forEach(card=>{
+      card.addEventListener('click', ()=>{ // rebind
+        const f = card.getAttribute('data-filter');
+        applyFilter(f);
+      });
+    });
+    // allow admin opening
+    loadUsersTable();
+  })();
+
+  </script>
+</div>

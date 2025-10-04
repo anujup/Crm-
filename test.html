@@ -362,7 +362,6 @@ input[disabled] {
         display: block;
     }
 }
-
 </style>
 
 
@@ -514,83 +513,207 @@ input[disabled] {
     </div>
   </div>
 </div>
+
+
 <script>
-const BACKEND_URL = "https://script.google.com/macros/s/AKfycbxmG-QPmH3jojJU2dsoOLBzOUbLMWCneeUr4DoP3AVenKqutAC4TaZo2tRrM4lgN_9_oA/exec"; // replace with deployed URL
+/* ---------------------------
+   CONFIG / STORAGE / HELPERS
+--------------------------- */
+const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTOtS2GnTFyub_OiySTKw_6Uu6d-GfRpUZ7VHePUamzXS3LxTVgWzZRoAO1xA9O7HQ9W_1IELtChcA9/pub?output=csv";
+const DEFAULT_USERS = { agent1:"pass1", agent2:"pass2", agent3:"pass3", admin:"adminpass" };
+if (!localStorage.getItem('users')) {
+  localStorage.setItem('users', JSON.stringify(DEFAULT_USERS));
+}
 
-document.getElementById("loginBtn").addEventListener("click", async () => {
-  const username = document.getElementById("username").value.trim();
-  const password = document.getElementById("password").value.trim();
+let customers = [];
+let headers = [];
+let currentAgent = null;
+let loginSessions = [];
+let loginTimer = null;
+let currentFilter = "Pending";
+let filteredCustomers = [];
+let currentIndex = 0;
 
+function maskPhone(phone) {
+  if (!phone) return "";
+  const digits = phone.replace(/\D/g,'');
+  if (digits.length < 6) return phone;
+  return digits.replace(/(\d{4})\d{4}(\d{2})/, '$1****$2');
+}
+
+// Simple CSV parser
+async function fetchCSV() {
   try {
-    const res = await fetch(BACKEND_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "login",
-        username,
-        password
-      })
-    });
+    const res = await fetch(CSV_URL);
+    const txt = await res.text();
+    const lines = txt.split(/\r?\n/).filter(l => l.trim() !== '');
+    if (lines.length === 0) return;
 
-    const raw = await res.text();   // get raw text
-    console.log("Raw response:", raw);
+    headers = lines[0].split(',').map(h => h.trim());
+    customers = lines.slice(1).map(line => {
+      const row = {};
+      const cols = line.split(',');
+      headers.forEach((h,i) => row[h] = (cols[i] || "").trim());
+      return row;
+    }).filter(r => r['Name'] && r['Phone']);
+  } catch (e) {
+    console.error("CSV fetch error:", e);
+    alert("Could not load customer sheet. Check CSV URL or network.");
+  }
+}
 
-    let data;
-    try {
-      data = JSON.parse(raw);       // try to parse JSON
-    } catch (e) {
-      throw new Error("Not valid JSON, check backend response");
-    }
+function formatSecs(sec) {
+  sec = Math.max(0, Math.floor(sec));
+  const h = String(Math.floor(sec/3600)).padStart(2,'0');
+  sec %= 3600;
+  const m = String(Math.floor(sec/60)).padStart(2,'0');
+  const s = String(sec%60).padStart(2,'0');
+  return `${h}:${m}:${s}`;
+}
 
-    if (data.success) {
-      // ✅ Login success
-      document.getElementById("loginBox").style.display = "none";
-      document.getElementById("appLayout").style.display = "grid";
-      document.getElementById("userLabel").innerText = `User: ${username}`;
+/* ---------------------------
+   AUTH & LOGIN / LOGOUT
+--------------------------- */
+document.getElementById('loginBtn').addEventListener('click', async () => {
+  const u = document.getElementById('username').value.trim();
+  const p = document.getElementById('password').value.trim();
+  const users = JSON.parse(localStorage.getItem('users') || '{}');
 
-      if (data.role === "admin") {
-        document.getElementById("gotoAdminBtn").style.display = "inline-block";
-        document.getElementById("adminOpenBtn").style.display = "inline-block";
-      }
+  if (users[u] && users[u] === p) {
+    currentAgent = u;
+    localStorage.setItem("loggedInUser", u);
 
-    } else {
-      document.getElementById("loginError").innerText = "Invalid username or password";
-    }
-  } catch (err) {
-    console.error("Login error:", err);
-    document.getElementById("loginError").innerText = "Server error, see console";
+    document.getElementById('loginBox').style.display = 'none';
+    document.getElementById('appLayout').style.display = 'grid';
+    document.getElementById('userLabel').innerText = `User: ${u}`;
+    document.getElementById('logoutTop').style.display = 'inline-block';
+    document.getElementById('gotoAdminBtn').style.display = (u==='admin') ? 'inline-block' : 'none';
+    document.getElementById('adminOpenBtn').style.display = (u==='admin') ? 'inline-block' : 'none';
+
+    await initAfterLogin();
+    handleSidebarToggleVisibility();
+  } else {
+    document.getElementById('loginError').innerText = "Invalid credentials";
+    setTimeout(() => document.getElementById('loginError').innerText = '', 2500);
   }
 });
 
-// Auto-login if already saved
-window.addEventListener("load", () => {
-  const savedUser = localStorage.getItem("loggedInUser");
-  const savedRole = localStorage.getItem("userRole");
-  if (savedUser) {
-    document.getElementById("loginBox").style.display = "none";
-    document.getElementById("appLayout").style.display = "grid";
-    document.getElementById("userLabel").innerText = `User: ${savedUser}`;
+document.getElementById('logoutTop').addEventListener('click', () => {
+  if (!currentAgent) return;
 
-    if (savedRole === "admin") {
-      document.getElementById("gotoAdminBtn").style.display = "inline-block";
-      document.getElementById("adminOpenBtn").style.display = "inline-block";
-    }
+  let sessions = JSON.parse(localStorage.getItem(`sessions-${currentAgent}`) || '[]');
+  if (sessions.length && sessions[sessions.length - 1].end === null) {
+    sessions[sessions.length - 1].end = Date.now();
   }
-});
+  localStorage.setItem(`sessions-${currentAgent}`, JSON.stringify(sessions));
+  localStorage.setItem(`currentIndex-${currentAgent}`, currentIndex);
 
-// Logout button
-document.getElementById("logoutTop").addEventListener("click", () => {
   localStorage.removeItem("loggedInUser");
-  localStorage.removeItem("userRole");
-  document.getElementById("appLayout").style.display = "none";
-  document.getElementById("loginBox").style.display = "block";
-  document.getElementById("username").value = "";
-  document.getElementById("password").value = "";
-  document.getElementById("userLabel").innerText = "";
-  document.getElementById("gotoAdminBtn").style.display = "none";
-  document.getElementById("adminOpenBtn").style.display = "none";
-  document.getElementById("logoutTop").style.display = "none";
+  currentAgent = null;
+
+  document.getElementById('appLayout').style.display = 'none';
+  document.getElementById('loginBox').style.display = 'block';
+  document.getElementById('username').value = "";
+  document.getElementById('password').value = "";
+  document.getElementById('userLabel').innerText = "";
+  document.getElementById('logoutTop').style.display = 'none';
+  document.getElementById('gotoAdminBtn').style.display = 'none';
+  document.getElementById('adminOpenBtn').style.display = 'none';
 });
+
+/* ---------------------------
+   APP INIT AFTER LOGIN
+--------------------------- */
+async function initAfterLogin(skipCSV) {
+  if (!skipCSV) await fetchCSV();
+
+  if (currentAgent === 'admin') {
+    document.getElementById('adminPanel').style.display = 'block';
+    document.getElementById('contentArea').style.display = 'none';
+    loadUsersTable();
+    document.getElementById('adminLunchTime').value = localStorage.getItem('lunchTime') || '14:30';
+    return;
+  }
+
+  document.getElementById('adminPanel').style.display = 'none';
+  document.getElementById('contentArea').style.display = 'block';
+
+  let sessions = JSON.parse(localStorage.getItem(`sessions-${currentAgent}`) || '[]');
+  sessions.push({start: Date.now(), end: null});
+  localStorage.setItem(`sessions-${currentAgent}`, JSON.stringify(sessions));
+
+  loginSessions = sessions;
+  startLoginTimer();
+
+  currentFilter = 'Pending';
+  currentIndex = parseInt(localStorage.getItem(`currentIndex-${currentAgent}`) || 0);
+  applyFilter(currentFilter);
+  startLunchChecker();
+}
+
+/* ---------------------------
+   DASHBOARD / FILTERS
+--------------------------- */
+// ... keep your renderCardView, renderTableView, updateDashboardCounts exactly as before
+// (no changes except formatting)
+
+/* ---------------------------
+   SIDEBAR TOGGLE
+--------------------------- */
+const sidebar = document.querySelector('.sidebar');
+const sidebarToggle = document.getElementById('sidebarToggle');
+const sidebarOverlay = document.getElementById('sidebarOverlay');
+
+sidebarToggle.addEventListener('click', () => {
+  sidebar.classList.toggle('open');
+  sidebarOverlay.classList.toggle('active');
+});
+sidebarOverlay.addEventListener('click', () => {
+  sidebar.classList.remove('open');
+  sidebarOverlay.classList.remove('active');
+});
+document.getElementById('contentArea').addEventListener('click', () => {
+  sidebar.classList.remove('open');
+  sidebarOverlay.classList.remove('active');
+});
+
+function handleSidebarToggleVisibility() {
+  const loginBox = document.getElementById('loginBox');
+  const loginVisible = loginBox && getComputedStyle(loginBox).display !== 'none';
+  const smallScreen = window.matchMedia("(max-width: 768px)").matches;
+  sidebarToggle.style.display = (loginVisible || !smallScreen) ? 'none' : 'inline-block';
+}
+function setupSidebarToggleLogic() {
+  handleSidebarToggleVisibility();
+  window.addEventListener('resize', handleSidebarToggleVisibility);
+}
+setupSidebarToggleLogic();
+
+/* ---------------------------
+   AUTO LOGIN (on refresh)
+--------------------------- */
+window.addEventListener("load", async () => {
+  const savedUser = localStorage.getItem("loggedInUser");
+  if (savedUser) {
+    currentAgent = savedUser;
+    document.getElementById('loginBox').style.display = 'none';
+    document.getElementById('appLayout').style.display = 'grid';
+    document.getElementById('userLabel').innerText = `User: ${savedUser}`;
+    document.getElementById('logoutTop').style.display = 'inline-block';
+    document.getElementById('gotoAdminBtn').style.display = (savedUser === 'admin') ? 'inline-block' : 'none';
+    document.getElementById('adminOpenBtn').style.display = (savedUser === 'admin') ? 'inline-block' : 'none';
+    await initAfterLogin();
+    handleSidebarToggleVisibility();
+  }
+});
+
+/* ---------------------------
+   INITIAL LOAD
+--------------------------- */
+(async function init(){
+  await fetchCSV();
+  loadUsersTable();
+})();
 
 </script>
 </body>

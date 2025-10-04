@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CRM Login Test</title>
+</head>
+<body>
+  <h2>CRM Login Test</h2>
+
+  <div>
+    <input id="username" type="text" placeholder="Username"><br><br>
+    <input id="password" type="password" placeholder="Password"><br><br>
+    <button id="loginBtn">Login</button>
+  </div>
+
+  <p id="result" style="margin-top:20px;color:blue;"></p>
+  <!-- Eruda console for debugging on mobile -->
+  <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+  <script>
+    eruda.init();
+  </script>
+
+  <script>
+    // 🔴 Replace this with your deployed Apps Script Web App URL (must end with /exec)
+    const BACKEND_URL = "https://script.google.com/macros/s/AKfycbxmG-QPmH3jojJU2dsoOLBzOUbLMWCneeUr4DoP3AVenKqutAC4TaZo2tRrM4lgN_9_oA/exec";
+
+    document.getElementById("loginBtn").addEventListener("click", async () => {
+      const username = document.getElementById("username").value.trim();
+      const password = document.getElementById("password").value.trim();
+      const resultBox = document.getElementById("result");
+
+      try {
+        const res = await fetch(BACKEND_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "login",
+            username,
+            password
+          })
+        });
+
+        const raw = await res.text();   // debug raw response
+        console.log("Raw response:", raw);
+
+        let data;
+        try {
+          data = JSON.parse(raw);
+        } catch (e) {
+          resultBox.style.color = "red";
+          resultBox.textContent = "Invalid JSON (see console)";
+          return;
+        }
+
+        if (data.success) {
+          resultBox.style.color = "green";
+          resultBox.textContent = `✅ Login success! Role = ${data.role}`;
+        } else {
+          resultBox.style.color = "red";
+          resultBox.textContent = "❌ Invalid username or password";
+        }
+
+      } catch (err) {
+        console.error("Login error:", err);
+        resultBox.style.color = "red";
+        resultBox.textContent = "⚠️ Server error, see console";
+      }
+    });
+  </script>
+</body>
+</html>
